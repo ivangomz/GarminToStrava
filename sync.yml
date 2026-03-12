@@ -1,0 +1,30 @@
+name: Sync Garmin descriptions to Strava
+
+on:
+  schedule:
+    - cron: "0 10 * * *"   # runs daily at 10:00 UTC — adjust to after your usual workout time
+  workflow_dispatch:        # lets you trigger it manually from GitHub's UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install garminconnect requests
+
+      - name: Run sync
+        env:
+          GARMIN_EMAIL:         ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD:      ${{ secrets.GARMIN_PASSWORD }}
+          STRAVA_CLIENT_ID:     ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+        run: python sync_descriptions.py
