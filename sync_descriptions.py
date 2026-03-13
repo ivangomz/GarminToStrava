@@ -166,7 +166,7 @@ def main():
             skipped += 1
             continue
 
-        print(f"  [UPDATE] '{s_name}' → "{description[:60]}…"")
+        print(f"  [UPDATE] '{s_name}' -> '{description[:60]}...'")
         update_strava_description(strava_token, s_id, description)
         updated += 1
 
