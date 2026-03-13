@@ -82,15 +82,24 @@ def build_garmin_description(g_act):
     Pull the best available description text from a Garmin activity.
     Runna writes its workout notes into 'workoutName' and/or 'description'.
     """
+    # DEBUG: print all fields so we can find where Runna puts the notes
+    print("  [DEBUG] Garmin activity fields:")
+    for key, value in g_act.items():
+        if value and str(value).strip():
+            print(f"    {key}: {str(value)[:120]}")
+
     parts = []
 
     name = g_act.get("workoutName") or ""
     desc = g_act.get("description") or ""
+    notes = g_act.get("notes") or ""
 
     if name and name not in desc:
         parts.append(name)
     if desc:
         parts.append(desc)
+    if notes and notes not in desc:
+        parts.append(notes)
 
     return "\n".join(parts).strip()
 
@@ -109,10 +118,8 @@ def main():
 
     # 3. Garmin auth + fetch
     print("Logging into Garmin Connect…")
-    GARMIN_TOKENS = os.environ["GARMIN_TOKENS"]
-    client = Garmin()
-    client.garth.loads(GARMIN_TOKENS)
-    client.username = GARMIN_EMAIL
+    client = Garmin(GARMIN_EMAIL, GARMIN_PASSWORD)
+    client.login()
 
     print(f"Fetching Garmin activities from the last {DAYS_BACK} days…")
     garmin_acts = get_garmin_workouts(client)
@@ -159,7 +166,7 @@ def main():
             skipped += 1
             continue
 
-        print(f"  [UPDATE] '{s_name}' -> '{description[:60]}...'")
+        print(f"  [UPDATE] '{s_name}' → "{description[:60]}…"")
         update_strava_description(strava_token, s_id, description)
         updated += 1
 
