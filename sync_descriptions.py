@@ -59,7 +59,16 @@ def get_garmin_workouts(client, days_back=DAYS_BACK):
     activities = client.get_activities_by_date(
         start.isoformat(), end.isoformat()
     )
-    return activities
+    # Fetch full details for each activity to get notes/description
+    detailed = []
+    for act in activities:
+        try:
+            detail = client.get_activity(act["activityId"])
+            detailed.append(detail)
+        except Exception as e:
+            print(f"  [WARN] Could not fetch detail for {act['activityId']}: {e}")
+            detailed.append(act)
+    return detailed
 
 
 def parse_garmin_start_time(activity):
