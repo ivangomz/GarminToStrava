@@ -109,8 +109,10 @@ def main():
 
     # 3. Garmin auth + fetch
     print("Logging into Garmin Connect…")
-    client = Garmin(GARMIN_EMAIL, GARMIN_PASSWORD)
-    client.login()
+    GARMIN_TOKENS = os.environ["GARMIN_TOKENS"]
+    client = Garmin()
+    client.garth.loads(GARMIN_TOKENS)
+    client.username = GARMIN_EMAIL
 
     print(f"Fetching Garmin activities from the last {DAYS_BACK} days…")
     garmin_acts = get_garmin_workouts(client)
