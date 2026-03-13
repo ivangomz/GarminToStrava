@@ -11,7 +11,6 @@ from garminconnect import Garmin
 
 # ── CONFIG ──────────────────────────────────────────────────────────────────
 GARMIN_EMAIL    = os.environ["GARMIN_EMAIL"]
-GARMIN_PASSWORD = os.environ["GARMIN_PASSWORD"]
 
 STRAVA_CLIENT_ID     = os.environ["STRAVA_CLIENT_ID"]
 STRAVA_CLIENT_SECRET = os.environ["STRAVA_CLIENT_SECRET"]
@@ -118,8 +117,9 @@ def main():
 
     # 3. Garmin auth + fetch
     print("Logging into Garmin Connect…")
-    client = Garmin(GARMIN_EMAIL, GARMIN_PASSWORD)
-    client.login()
+    GARMIN_TOKENS = os.environ["GARMIN_TOKENS"]
+    client = Garmin()
+    client.garth.loads(GARMIN_TOKENS)
 
     print(f"Fetching Garmin activities from the last {DAYS_BACK} days…")
     garmin_acts = get_garmin_workouts(client)
