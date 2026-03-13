@@ -150,7 +150,9 @@ def main():
         for g_act in garmin_acts:
             try:
                 g_time = parse_garmin_start_time(g_act)
-            except Exception:
+                print(f"    [GARMIN] {g_act.get('activityName', 'unknown')} at {g_time}")
+            except Exception as e:
+                print(f"    [GARMIN PARSE ERROR] {e} -- keys: {list(g_act.keys())[:10]}")
                 continue
             delta = abs(s_time - g_time)
             if delta < best_delta:
