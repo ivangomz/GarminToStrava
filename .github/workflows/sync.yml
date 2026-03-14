@@ -28,4 +28,4 @@ jobs:
           STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
           STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
           GARMIN_TOKENS:        ${{ secrets.GARMIN_TOKENS }}
-        run: python sync_descriptions.py
+        run: python sync_descriptions_gpt.py
