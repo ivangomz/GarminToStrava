@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 import requests
 from datetime import datetime, timedelta, timezone
 from garminconnect import Garmin
@@ -11,6 +12,10 @@ GARMIN_TOKENS = os.environ["GARMIN_TOKENS"]
 
 DAYS_BACK = 3
 MATCH_WINDOW_SECONDS = 7200  # optional fallback if scheduled time exists
+
+# The garminconnect wrapper logs full tracebacks for expected client errors like
+# 404s. We handle those locally, so keep the library quiet.
+logging.getLogger("garminconnect").setLevel(logging.CRITICAL)
 
 
 def normalize_text(text: str) -> str:
@@ -69,7 +74,22 @@ def get_garmin_client():
 def get_garmin_activities(client, days_back=DAYS_BACK):
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=days_back)
-    return client.get_activities_by_date(start_date.isoformat(), end_date.isoformat())
+    activities = client.get_activities_by_date(start_date.isoformat(), end_date.isoformat())
+
+    detailed = []
+    for activity in activities:
+        activity_id = activity.get("activityId")
+        if not activity_id:
+            detailed.append(activity)
+            continue
+
+        try:
+            detailed.append(client.get_activity(activity_id))
+        except Exception as exc:
+            print(f"[WARN] Could not fetch Garmin activity detail for {activity_id}: {exc}")
+            detailed.append(activity)
+
+    return detailed
 
 
 def get_garmin_calendar_workouts(client, days_back=DAYS_BACK):
@@ -95,6 +115,10 @@ def get_garmin_calendar_workouts(client, days_back=DAYS_BACK):
                     calendar_items.append(payload)
 
         except Exception as e:
+            message = str(e)
+            if "404" in message:
+                print("[INFO] Garmin workout schedule endpoint is unavailable; using activity details fallback")
+                break
             print(f"[WARN] Could not fetch Garmin calendar for {ds}: {e}")
 
         day += timedelta(days=1)
@@ -119,9 +143,32 @@ def parse_strava_start(activity):
 def extract_activity_name(g_activity):
     return (
         g_activity.get("activityName")
+        or g_activity.get("workoutName")
         or g_activity.get("activityType", {}).get("typeKey")
         or ""
     )
+
+
+def extract_activity_notes(g_activity):
+    parts = []
+
+    def add(value):
+        if value is None:
+            return
+        value = str(value).strip()
+        if value and value not in parts:
+            parts.append(value)
+
+    add(g_activity.get("workoutName"))
+    add(g_activity.get("description"))
+    add(g_activity.get("notes"))
+    add(g_activity.get("activityName"))
+
+    summary = g_activity.get("summaryDTO", {})
+    if isinstance(summary, dict):
+        add(summary.get("description"))
+
+    return "\n".join(parts).strip()
 
 
 def extract_calendar_name(item):
@@ -259,18 +306,17 @@ def main():
         print(f"  [GARMIN ACTIVITY] {g_name}")
 
         calendar_item = find_matching_calendar_workout(g_activity, calendar_workouts)
-        if not calendar_item:
-            print("  [SKIP] No Garmin calendar workout match")
-            skipped += 1
-            continue
-
-        cal_name = extract_calendar_name(calendar_item)
-        notes = extract_calendar_notes(calendar_item)
-
-        print(f"  [CALENDAR MATCH] {cal_name}")
+        notes = ""
+        if calendar_item:
+            cal_name = extract_calendar_name(calendar_item)
+            notes = extract_calendar_notes(calendar_item)
+            print(f"  [CALENDAR MATCH] {cal_name}")
+        else:
+            print("  [INFO] No Garmin calendar workout match, falling back to activity details")
+            notes = extract_activity_notes(g_activity)
 
         if not notes:
-            print("  [SKIP] Calendar workout has no notes/description")
+            print("  [SKIP] No Garmin notes/description found")
             skipped += 1
             continue
 
